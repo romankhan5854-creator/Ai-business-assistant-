@@ -1,6 +1,6 @@
 # 🏪 AI Business Assistant
 
-An AI helper for small shop owners and freelancers. Built with **Streamlit** and **Google Gemini**.
+An AI helper for small shop owners and freelancers. Built with **Streamlit** and **Google Gemini** (called over plain HTTPS, no Google SDK needed).
 
 ## Features
 - 🎙️ **Urdu voice input** – say a sale or expense in Urdu and save it with one tap
