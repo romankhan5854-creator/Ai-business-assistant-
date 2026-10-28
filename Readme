@@ -1,0 +1,42 @@
+# 🏪 AI Business Assistant
+
+An AI helper for small shop owners and freelancers. Built with **Streamlit** and **Google Gemini**.
+
+## Features
+- 🎙️ **Urdu voice input** – say a sale or expense in Urdu and save it with one tap
+- 📈 **Sales tracker** – add sales, see totals and charts
+- 🧾 **Expense organizer** – categorize spending, see where money goes
+- 📢 **Ad writer** – ads for WhatsApp, Facebook, Instagram, SMS in Urdu / Roman Urdu / English
+- 💬 **Customer replies** – paste a customer message, get a polite reply based on your shop info
+- 💡 **AI business tips** – weekly advice from your own numbers
+- 💳 **Monthly plans** – Free / Starter / Pro limits on AI requests (demo, no real payments yet)
+
+## Run locally
+```bash
+pip install -r requirements.txt
+export GEMINI_API_KEY="your-key"     # Windows: set GEMINI_API_KEY=your-key
+streamlit run app.py
+```
+Get a free API key at https://aistudio.google.com/apikey
+
+## Deploy on Streamlit Community Cloud
+1. Push this repo to GitHub.
+2. Go to https://share.streamlit.io → **Create app** → pick the repo, branch `main`, file `app.py`.
+3. Open **Advanced settings → Secrets** and add:
+   ```toml
+   GEMINI_API_KEY = "your-key"
+   ```
+4. Click **Deploy**.
+
+Optional secret: `GEMINI_MODEL = "gemini-2.5-flash"` to change the model.
+
+## Notes
+- Data lives in the browser session. Use the **Download CSV / Load CSV** buttons to keep it between visits.
+- Never commit your API key to GitHub.
+
+## Files
+| File | Purpose |
+|---|---|
+| `app.py` | The whole Streamlit app |
+| `requirements.txt` | Python packages |
+| `README.md` | This guide |
