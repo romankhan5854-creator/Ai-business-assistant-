@@ -11,14 +11,6 @@ An AI helper for small shop owners and freelancers. Built with **Streamlit** and
 - 💡 **AI business tips** – weekly advice from your own numbers
 - 💳 **Monthly plans** – Free / Starter / Pro limits on AI requests (demo, no real payments yet)
 
-## Run locally
-```bash
-pip install -r requirements.txt
-export GEMINI_API_KEY="your-key"     # Windows: set GEMINI_API_KEY=your-key
-streamlit run app.py
-```
-Get a free API key at https://aistudio.google.com/apikey
-
 ## Deploy on Streamlit Community Cloud
 1. Push this repo to GitHub.
 2. Go to https://share.streamlit.io → **Create app** → pick the repo, branch `main`, file `app.py`.
