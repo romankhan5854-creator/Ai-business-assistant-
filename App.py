@@ -101,7 +101,7 @@ def get_api_key() -> str:
             return st.secrets["GEMINI_API_KEY"]
     except Exception:
         pass
-    return os.getenv("GEMINI_API_KEY", "") or st.session_state.get("manual_key", "")
+    return os.getenv("GEMINI_API_KEY", "")
 
 
 def get_model() -> str:
@@ -117,7 +117,7 @@ def call_gemini(contents, system: str, as_json: bool = False):
     """Single place where we talk to Gemini. Returns text or None (error shown in UI)."""
     key = get_api_key()
     if not key:
-        st.error("Add your Gemini API key in the sidebar (or in Streamlit secrets) first.")
+        st.error("The AI service is not available right now. Please try again later.")
         return None
     if quota_left() <= 0:
         st.warning("You have used all AI requests for your plan. Upgrade in the Plans tab.")
@@ -181,10 +181,6 @@ def sidebar():
         st.title("🏪 AI Business Assistant")
         st.caption("For shop owners & freelancers")
 
-        if not (os.getenv("GEMINI_API_KEY") or _secret_has_key()):
-            st.text_input("Gemini API key", type="password", key="manual_key",
-                          help="Get a free key at aistudio.google.com")
-
         st.subheader("Your shop")
         p = st.session_state.profile
         p["name"] = st.text_input("Shop / business name", p["name"])
@@ -196,13 +192,6 @@ def sidebar():
         st.write(f"**Plan:** {st.session_state.plan} ({plan['price']})")
         st.progress(min(st.session_state.ai_calls / plan["limit"], 1.0))
         st.caption(f"{st.session_state.ai_calls} / {plan['limit']} AI requests used")
-
-
-def _secret_has_key() -> bool:
-    try:
-        return "GEMINI_API_KEY" in st.secrets
-    except Exception:
-        return False
 
 
 def tab_dashboard():
