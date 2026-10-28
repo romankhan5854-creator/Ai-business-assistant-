@@ -4,20 +4,20 @@ organize expenses and answer customer questions. Includes simple Urdu voice inpu
 Run locally:  streamlit run app.py
 """
 
+import base64
 import json
 import os
 import re
 from datetime import date
 
 import pandas as pd
+import requests
 import streamlit as st
-from google import genai
-from google.genai import types
 
 # ----------------------------------------------------------------------------
 # Config
 # ----------------------------------------------------------------------------
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-2.5-flash"  # change with the GEMINI_MODEL secret if needed
 
 # Demo monthly plans (no real payment is processed in this version).
 PLANS = {
@@ -113,8 +113,36 @@ def get_model() -> str:
     return os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
 
 
+API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+
+def _to_parts(contents) -> list:
+    """Accept a string or a list of strings / ready-made part dicts."""
+    if isinstance(contents, str):
+        contents = [contents]
+    return [{"text": c} if isinstance(c, str) else c for c in contents]
+
+
+def audio_part(data: bytes, mime_type: str) -> dict:
+    return {"inline_data": {"mime_type": mime_type or "audio/wav", "data": base64.b64encode(data).decode()}}
+
+
+def extract_text(payload: dict) -> str:
+    """Pull the text out of a Gemini REST response; raise ValueError if there is none."""
+    candidates = payload.get("candidates") or []
+    if not candidates:
+        reason = (payload.get("promptFeedback") or {}).get("blockReason", "no answer returned")
+        raise ValueError(f"Gemini returned no answer ({reason}).")
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    text = "".join(p.get("text", "") for p in parts)
+    if not text.strip():
+        raise ValueError("Gemini returned an empty answer.")
+    return text
+
+
 def call_gemini(contents, system: str, as_json: bool = False):
-    """Single place where we talk to Gemini. Returns text or None (error shown in UI)."""
+    """Single place where we talk to Gemini (plain HTTPS, no extra package needed).
+    Returns text or None (a friendly error is shown in the UI)."""
     key = get_api_key()
     if not key:
         st.error("The AI service is not available right now. Please try again later.")
@@ -122,19 +150,36 @@ def call_gemini(contents, system: str, as_json: bool = False):
     if quota_left() <= 0:
         st.warning("You have used all AI requests for your plan. Upgrade in the Plans tab.")
         return None
+
+    body = {
+        "system_instruction": {"parts": [{"text": system}]},
+        "contents": [{"role": "user", "parts": _to_parts(contents)}],
+        "generationConfig": {
+            "temperature": 0.7,
+            "responseMimeType": "application/json" if as_json else "text/plain",
+        },
+    }
     try:
-        client = genai.Client(api_key=key)
-        config = types.GenerateContentConfig(
-            system_instruction=system,
-            temperature=0.7,
-            response_mime_type="application/json" if as_json else "text/plain",
+        resp = requests.post(
+            API_URL.format(model=get_model()),
+            headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+            json=body,
+            timeout=90,
         )
-        response = client.models.generate_content(model=get_model(), contents=contents, config=config)
+        if resp.status_code != 200:
+            try:
+                msg = resp.json().get("error", {}).get("message", resp.text[:200])
+            except ValueError:
+                msg = resp.text[:200]
+            raise RuntimeError(f"HTTP {resp.status_code}: {msg}")
+        text = extract_text(resp.json())
         st.session_state.ai_calls += 1
-        return response.text
-    except Exception as exc:  # network, bad key, quota, safety block...
-        st.error(f"Gemini error: {exc}")
-        return None
+        return text
+    except requests.RequestException:
+        st.error("Could not reach the AI service. Check the internet connection and try again.")
+    except (RuntimeError, ValueError) as exc:
+        st.error(f"AI service error: {exc}")
+    return None
 
 
 def shop_context() -> str:
@@ -347,7 +392,7 @@ def tab_voice():
     audio = st.audio_input("Record your voice note")
 
     if audio is not None and st.button("🔊 Understand my voice"):
-        part = types.Part.from_bytes(data=audio.getvalue(), mime_type=audio.type or "audio/wav")
+        part = audio_part(audio.getvalue(), audio.type)
         with st.spinner("Listening..."):
             out = call_gemini([part, "Process this voice note."], VOICE_SYSTEM, as_json=True)
         data = parse_json(out) if out else None
